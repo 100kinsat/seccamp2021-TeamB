@@ -10,6 +10,10 @@ static const uint32_t GPSBaud = 9600;
 TinyGPSPlus gps;
 HardwareSerial ss(2);
 
+// 目的地の緯度・経度を設定(テスト時に書き換え)
+const double goal_lat = 0.0;
+const double goal_lng = 0.0;
+
 // チャンネル
 const int CHANNEL_A = 0;
 const int CHANNEL_B = 1;
@@ -44,26 +48,22 @@ void setup() {
   ss.begin(GPSBaud);
 
   Serial.println("GPS start!");
-  // // 出発地点の緯度・経度を取得する
-  // std::vector<double> latLng = get_start_lat_lng();
-  // Serial.println(latLng[0]);
-  // Serial.println(latLng[1]);
-  // // 目的地の緯度・軽度を取得する
 }
 
 // TODO：GPSの緯度・軽度を取得するまで待機，したら返す
 // 緯度・経度を取得する
 std::vector<double> get_lat_lng(){
   std::vector<double> latLng = {0.0 , 0.0};
-  while(ss.available() > 0){
-    char c = ss.read();
-    gps.encode(c);
-    if(gps.location.isUpdated()){
-      latLng[0] = gps.location.lat();
-      latLng[1] = gps.location.lng();
-      Serial.print("Lat=\t");   Serial.print(gps.location.lat(), 6);
-      Serial.print(" Lng=\t");   Serial.println(gps.location.lng(), 6);
-      break;
+  while(latLng[0] == 0.0 && latLng[1] == 0.0) {
+    if(ss.available() > 0){
+      char c = ss.read();
+      gps.encode(c);
+      if(gps.location.isUpdated()){
+        latLng[0] = gps.location.lat();
+        latLng[1] = gps.location.lng();
+        Serial.print("Lat=\t");   Serial.print(gps.location.lat(), 6);
+        Serial.print(" Lng=\t");   Serial.println(gps.location.lng(), 6);
+      }
     }
   }
   return latLng;
@@ -95,12 +95,25 @@ void move_straight(){
   // 左モータ（CCW，反時計回り）
   digitalWrite(motorA[1], LOW);
   digitalWrite(motorA[0], HIGH);
-  ledcWrite(CHANNEL_A, 200);
+  ledcWrite(CHANNEL_A, 100);
 
   // 右モータ（CW，時計回り）
   digitalWrite(motorB[1], LOW);
   digitalWrite(motorB[0], HIGH);
-  ledcWrite(CHANNEL_B, 200);
+  ledcWrite(CHANNEL_B, 100);
+}
+
+// 停止するためのコード
+void stop_motor(){
+  // 左モータ停止
+  digitalWrite(motorA[0], LOW);
+  digitalWrite(motorA[1], LOW);
+  ledcWrite(CHANNEL_A, HIGH);
+
+  // 右モータ停止
+  digitalWrite(motorB[0], LOW);
+  digitalWrite(motorB[1], LOW);
+  ledcWrite(CHANNEL_B, HIGH);
 }
 
 // 右にカーブしながら直進するためのコード
@@ -112,13 +125,14 @@ void move_left(){
 }
 
 
-// put your main code here, to run repeatedly:
 void loop() {
-  // move_straight();
-
-  // 出発地点の緯度・経度を取得する
+  // 現時点の緯度・経度を取得する
   std::vector<double> latLng = get_lat_lng();
-  Serial.println(latLng[0]);
-  Serial.println(latLng[1]);
-  // 目的地の緯度・軽度を取得する
+  // 緯度・経度の取得成功後
+  // 前進
+  move_straight();
+  // ここをいじって動かす時間を調整する
+  delay(2000);
+  // 停止
+  stop_motor();
 }

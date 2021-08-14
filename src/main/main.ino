@@ -23,9 +23,6 @@ const int LEDC_TIMER_BIT = 8;
 // 周波数
 const int LEDC_BASE_FREQ = 490;
 
-// 出発地点の緯度・経度を取得する
-std::vector<double> get_start_lat_lng();
-
 void setup() {
   // put your setup code here, to run once:
   for(int i = 0; i < 3; i++){
@@ -46,7 +43,6 @@ void setup() {
    **/
   Serial.begin(115200);
   ss.begin(GPSBaud);
-
   Serial.println("GPS start!");
 }
 
@@ -124,6 +120,7 @@ void move_right(){
 void move_left(){
 }
 
+// 9軸センサの値を取得する
 
 void loop() {
   // 現時点の緯度・経度を取得する

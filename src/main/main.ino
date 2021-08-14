@@ -1,6 +1,13 @@
 #include "motor.hpp"
 #include <TinyGPS++.h>
 #include <vector>
+#include "mpu9250.h"
+
+// 9軸センサの利用
+Mpu9250 imu(&Wire, 0x68);
+std::vector<double> accel;
+std::vector<double> gyro;
+std::vector<double> mag;
 
 // Motor
 Motor motor = Motor();
@@ -21,7 +28,14 @@ void setup() {
    **/
   Serial.begin(115200);
   ss.begin(GPSBaud);
-  Serial.println("GPS start!");
+  // Serial.println("GPS start!");
+
+  while(!Serial) {}
+  /* Start communication */
+  if (!imu.Begin()) {
+    Serial.println("IMU initialization unsuccessful");
+    while(1) {}
+  }
 }
 
 // 緯度・経度を取得する
@@ -42,19 +56,47 @@ std::vector<double> get_lat_lng(){
   return latLng;
 }
 
-// 目的地の緯度・経度を取得する
-void set_goal_lat_lng(){
-
-}
-
 // センサーの値を取得する
-void get_sensor_value(){
-
-}
+void get_sensor_value(){}
 
 // 9軸センサの値を取得する
+void get_nine_axis_value() {
+  if (imu.Read()) {
+    accel = {imu.accel_x_mps2(), imu.accel_y_mps2(), imu.accel_z_mps2()};
+    gyro = {imu.gyro_x_radps(), imu.gyro_y_radps(), imu.gyro_z_radps()};
+    mag = {imu.mag_x_ut(), imu.mag_y_ut(), imu.mag_z_ut()};
+  }
+}
+
+// TODO:地軸センサの値をキャリブレーションする
 
 void loop() {
+  get_nine_axis_value();
+  // Serial.print(accel[0], 6);
+  // Serial.print("\t");
+  // Serial.print(accel[1], 6);
+  // Serial.print("\t");
+  // Serial.print(accel[2], 6);
+
+  // Serial.print(gyro[0], 6);
+  // Serial.print("\t");
+  // Serial.print(gyro[1], 6);
+  // Serial.print("\t");
+  // Serial.print(gyro[2], 6);
+  // Serial.print("\t");
+
+  Serial.print("x:");
+  Serial.print(mag[0], 6);
+  Serial.print(",");
+  Serial.print("y:");
+  Serial.print(mag[1], 6);
+  // Serial.print(",");
+  //Serial.print("z:");
+  //Serial.print(mag[2], 6);
+  Serial.print("\n");
+  //delay(1000);
+
+  /*
   // 現時点の緯度・経度を取得する
   std::vector<double> latLng = get_lat_lng();
   // 緯度・経度の取得成功後
@@ -64,4 +106,5 @@ void loop() {
   delay(2000);
   // 停止
   motor.stop_motor();
+  */
 }

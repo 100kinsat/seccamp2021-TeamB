@@ -1,13 +1,22 @@
 #include "motor.hpp"
+#include "led.hpp"
+#include "speaker.hpp"
+#include "MPU9250.h"
 #include <TinyGPS++.h>
 #include <vector>
-#include "mpu9250.h"
+
+MPU9250 mpu;
+
+// LED
+Led led = Led();
+
+// SPEAKER
+Speaker speaker = Speaker();
 
 // 9軸センサの利用
-Mpu9250 imu(&Wire, 0x68);
-std::vector<double> accel;
-std::vector<double> gyro;
-std::vector<double> mag;
+// std::vector<double> accel;
+// std::vector<double> gyro;
+// std::vector<double> mag;
 
 // Motor
 Motor motor = Motor();
@@ -23,19 +32,40 @@ const double goal_lat = 0.0;
 const double goal_lng = 0.0;
 
 void setup() {
-  /**
-   * GPSの設定
-   **/
   Serial.begin(115200);
-  ss.begin(GPSBaud);
-  // Serial.println("GPS start!");
+  Wire.begin();
 
-  while(!Serial) {}
-  /* Start communication */
-  if (!imu.Begin()) {
-    Serial.println("IMU initialization unsuccessful");
-    while(1) {}
+  // GPSの設定
+  ss.begin(GPSBaud);
+
+  // MPU9250の設定
+  if (!mpu.setup(0x68)) {
+    while (1) {
+      Serial.println("MPU connection failed.");
+      delay(5000);
+    }
   }
+
+  // キャリブレーション
+  Serial.println("Accel Gyro calibration will start in 5sec.");
+  Serial.println("Please leave the device still on the flat plane.");
+  mpu.verbose(true);
+  delay(5000);
+  // 加速度・ジャイロセンサのキャリブレーション
+  mpu.calibrateAccelGyro();
+  Serial.println("Mag calibration will start in 5sec.");
+  Serial.println("Please Wave device in a figure eight until done.");
+  // キャリブレーション中：LED点灯
+  led.writeON();
+  speaker.tone(100); // スピーカーON
+  speaker.noTone();
+  delay(5000);
+  // 地磁気センサのキャリブレーション
+  mpu.calibrateMag();
+  led.writeOFF();
+
+  print_calibration();
+  mpu.verbose(false);
 }
 
 // 緯度・経度を取得する
@@ -59,43 +89,14 @@ std::vector<double> get_lat_lng(){
 // センサーの値を取得する
 void get_sensor_value(){}
 
-// 9軸センサの値を取得する
-void get_nine_axis_value() {
-  if (imu.Read()) {
-    accel = {imu.accel_x_mps2(), imu.accel_y_mps2(), imu.accel_z_mps2()};
-    gyro = {imu.gyro_x_radps(), imu.gyro_y_radps(), imu.gyro_z_radps()};
-    mag = {imu.mag_x_ut(), imu.mag_y_ut(), imu.mag_z_ut()};
-  }
-}
-
-// TODO:地軸センサの値をキャリブレーションする
-
 void loop() {
-  get_nine_axis_value();
-  // Serial.print(accel[0], 6);
-  // Serial.print("\t");
-  // Serial.print(accel[1], 6);
-  // Serial.print("\t");
-  // Serial.print(accel[2], 6);
-
-  // Serial.print(gyro[0], 6);
-  // Serial.print("\t");
-  // Serial.print(gyro[1], 6);
-  // Serial.print("\t");
-  // Serial.print(gyro[2], 6);
-  // Serial.print("\t");
-
-  Serial.print("x:");
-  Serial.print(mag[0], 6);
-  Serial.print(",");
-  Serial.print("y:");
-  Serial.print(mag[1], 6);
-  // Serial.print(",");
-  //Serial.print("z:");
-  //Serial.print(mag[2], 6);
-  Serial.print("\n");
-  //delay(1000);
-
+  if (mpu.update()) {
+    static uint32_t prev_ms = millis();
+    if (millis() > prev_ms + 25) {
+      print_roll_pitch_yaw();
+      prev_ms = millis();
+    }
+  }
   /*
   // 現時点の緯度・経度を取得する
   std::vector<double> latLng = get_lat_lng();
@@ -107,4 +108,45 @@ void loop() {
   // 停止
   motor.stop_motor();
   */
+}
+
+void print_roll_pitch_yaw() {
+    Serial.print("Yaw, Pitch, Roll: ");
+    Serial.print(mpu.getYaw(), 2);
+    Serial.print(", ");
+    Serial.print(mpu.getPitch(), 2);
+    Serial.print(", ");
+    Serial.println(mpu.getRoll(), 2);
+}
+
+void print_calibration() {
+    Serial.println("< calibration parameters >");
+    Serial.println("accel bias [g]: ");
+    Serial.print(mpu.getAccBiasX() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getAccBiasY() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getAccBiasZ() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+    Serial.println();
+    Serial.println("gyro bias [deg/s]: ");
+    Serial.print(mpu.getGyroBiasX() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getGyroBiasY() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+    Serial.print(", ");
+    Serial.print(mpu.getGyroBiasZ() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+    Serial.println();
+    Serial.println("mag bias [mG]: ");
+    Serial.print(mpu.getMagBiasX());
+    Serial.print(", ");
+    Serial.print(mpu.getMagBiasY());
+    Serial.print(", ");
+    Serial.print(mpu.getMagBiasZ());
+    Serial.println();
+    Serial.println("mag scale []: ");
+    Serial.print(mpu.getMagScaleX());
+    Serial.print(", ");
+    Serial.print(mpu.getMagScaleY());
+    Serial.print(", ");
+    Serial.print(mpu.getMagScaleZ());
+    Serial.println();
 }

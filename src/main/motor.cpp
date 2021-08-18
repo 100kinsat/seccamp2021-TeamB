@@ -29,6 +29,7 @@ void Motor::move_straight(int pwm) {
   digitalWrite(motorB[1], LOW);
   digitalWrite(motorB[0], HIGH);
   ledcWrite(CHANNEL_B, pwm);
+  delay(2000);
 }
 
 /**
@@ -47,9 +48,20 @@ void Motor::stop_motor(){
 }
 
 /**
- * 目的地の方角に回転する
+ * 目的地の方角に回転しながら直進する
  */
-void Motor::rotate_for_goal() {}
+void Motor::rotate_for_goal(int left_motor_power, int right_motor_power) {
+  // 前進
+  // 左モータ（CCW，反時計回り）
+  digitalWrite(motorA[1], LOW);
+  digitalWrite(motorA[0], HIGH);
+  ledcWrite(CHANNEL_A, left_motor_power);
+
+  // 右モータ（CW，時計回り）
+  digitalWrite(motorB[1], LOW);
+  digitalWrite(motorB[0], HIGH);
+  ledcWrite(CHANNEL_B, right_motor_power);
+}
 
 /**
  * 指定した角度だけ回転する
@@ -65,3 +77,18 @@ void Motor::move_right() {}
  * 左にカーブしながら直進するためのコード
  */
 void Motor::move_left() {}
+
+/**
+ * 目的地の方向へ向くためのコード
+ */
+void Motor::forward_to_goal(int pwm) {
+  // 左モータ（CCW，反時計回り）
+  digitalWrite(motorA[1], LOW);
+  digitalWrite(motorA[0], HIGH);
+  ledcWrite(CHANNEL_A, pwm);
+
+  // 右モータ（CW，時計回り）
+  digitalWrite(motorB[1], HIGH);
+  digitalWrite(motorB[0], LOW);
+  ledcWrite(CHANNEL_B, pwm);
+}

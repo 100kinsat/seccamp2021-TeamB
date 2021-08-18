@@ -15,10 +15,14 @@ class Motor {
     void move_straight(int pwm);
     // 停止するためのコード
     void stop_motor();
+    // 目的地の方角に回転しながら直進する(走行中)
+    void rotate_for_goal(int left_motor_power, int right_motor_power);
     // 右にカーブしながら直進するためのコード
     void move_right();
     // 左にカーブしながら直進するためのコード
     void move_left();
+    // 目的地の方向へ向くためのコード
+    void forward_to_goal(int pwm);
 
   private:
     // motor

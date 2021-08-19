@@ -144,29 +144,27 @@ std::vector<double> get_lat_lng(){
 }
 
 void loop() {
-  // if (mpu.update()) {
-  //   static uint32_t prev_ms = millis();
-  //   if (millis() > prev_ms + 25) {
-  //     print_roll_pitch_yaw();
-  //     prev_ms = millis();
-  //   }
-  // }
-
-  // 現時点の緯度・経度を取得する
-  // std::vector<double> lat_lng = get_lat_lng();
-  // double courseToGoal = course_to_goal(lat_lng[0], lat_lng[1], goal_lat, goal_lng);
   // 最初:右回転をして，目的地への方向へ向ける(+-20ぐらい)
   decide_first_course_loop();
 
-  // 目的地までの角度に応じた，車輪のPWM値を求める
-  // 緯度・経度の取得成功後
-  // 前進
-  TinyGPSPlus::distanceBetween(double lat1, double long1, double lat2, double long2)
-  motor.move_straight(pwm_value);
+  // 現在位置と目的地のGPSの値から(ユークリッド)距離を求める．
+  // ここは後で中に書き直す
+  std::vector<double> lat_lng = get_lat_lng();
+  String now_distance = String("now_distance:");
+  double distance_value = TinyGPSPlus::distanceBetween(lat_lng[0], lat_lng[1], goal_lat, goal_lng);
+  now_distance +=  String(distance_value) + String("\n");
+  sd.appendFileString(SD, log_filename.c_str(), now_distance);
+
+  // ゴールとの距離が4.0m以下なら，ゴールと判定する．
+  if(distance_value <= 4.0){
+    String finish = "finished";
+    sd.appendFileString(SD, log_filename.c_str(), finish);
+    exit(0);
+  }
+  motor.move_straight(pwm_value); // 前進
   // ここをいじって動かす時間を調整する
   delay(3000);
-  // 停止
-  motor.stop_motor();
+  motor.stop_motor(); // 停止
 }
 
 /*
@@ -176,6 +174,12 @@ double course_to_goal(double start_lat, double start_lng, double goal_lat, doubl
 }
 */
 
+// ゴール付近か確認する．
+void is_goal() {
+  // 現在位置と目的地のGPSの値から(ユークリッド)距離を求めて，？m以内ならゴールと判定する．
+  // https://github.com/mikalhart/TinyGPSPlus/blob/cfb60e5e381c025ff7e52838897edab8a6e7d449/src/TinyGPS%2B%2B.cpp#L285
+  // https://akizukidenshi.com/catalog/g/gK-09991/ より、測位確度：2mであるため、余裕をもって3,4m近づいたら停止で良いような気がしてます
+}
 
 // 最初の角度を合わせるための制御用ループ関数
 void decide_first_course_loop() {

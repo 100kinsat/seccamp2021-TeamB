@@ -1,9 +1,11 @@
 #include "motor.hpp"
 #include "led.hpp"
 #include "speaker.hpp"
+#include "cansat_sd.hpp"
 #include "MPU9250.h"
 #include <TinyGPS++.h>
 #include <vector>
+#include <string>
 
 MPU9250 mpu;
 
@@ -31,6 +33,16 @@ HardwareSerial ss(2);
 const double goal_lat = 51.508131;
 const double goal_lng = -0.128002;
 
+// SD card
+CanSatSd sd = CanSatSd();
+static const char *LOG_DIR = "/log";
+static const char *PREVIOUS_NUMBER_FILE = "/prev_log_number.txt";
+// SDに書き込む用のバッファ
+String log_message = "";
+String log_filename = "";
+
+int current_log_number = 0;
+
 void setup() {
   Serial.begin(115200);
   Wire.begin();
@@ -45,6 +57,19 @@ void setup() {
       delay(1000);
     }
   }
+  // SDの設定
+  if(!sd.existDir(SD, LOG_DIR)) {
+    Serial.println("Creating LOG_DIR...");
+    sd.createDir(SD, LOG_DIR);
+  }
+  sd.listDir(SD, "/", 1);
+
+  int previous_number = sd.readFileInt(SD, PREVIOUS_NUMBER_FILE);
+  current_log_number = previous_number;
+  Serial.print("Previous log number: ");
+  Serial.println(previous_number);
+
+  createNewLogFile();
 
   // キャリブレーション
   Serial.println("Accel Gyro calibration will start in 5sec.");
@@ -68,7 +93,37 @@ void setup() {
 
   print_calibration();
   mpu.verbose(false);
+
+  // どれだけキャリブレーションしたかファイルに書き込む（いる？）
 }
+
+void createNewLogFile() {
+  current_log_number++;
+  sd.writeFileInt(SD, PREVIOUS_NUMBER_FILE, current_log_number);
+
+  Serial.print("Next number: ");
+  Serial.println(current_log_number);
+
+  log_filename = String(LOG_DIR);
+  log_filename += String("/");
+  log_filename += String(current_log_number);
+  log_filename += String(".csv");
+
+  // String message = "";
+
+  // if (ENABLE_GPS) {
+  //   message += String("GPS,Testing TinyGPS++ library v. ");
+  //   message += String(TinyGPSPlus::libraryVersion());
+  //   message += String("\n");
+  //   message += String("GPS,Sats,HDOP,Latitude,Longitude,Fix Age,Date,Time,DateAge,Alt,Course,Speed,Card,DistanceToG,CourseToG,CardToG,CharsRX,SentencesRX,ChecksumFail\n");
+  // }
+
+  // message += String("MPU9250,Yaw,Pitch,Roll,AccelX,AccelY,AccelZ,GyroX,GyroY,GyroZ,MagX,MagY,MagZ,MyYaw\n");
+  // Serial.print(message);
+  String msg = String("create new file\n");
+  sd.appendFileString(SD, log_filename.c_str(), msg);
+}
+
 
 // 緯度・経度を取得する
 std::vector<double> get_lat_lng(){
@@ -88,9 +143,6 @@ std::vector<double> get_lat_lng(){
   return lat_lng;
 }
 
-// センサーの値を取得する
-void get_sensor_value(){}
-
 void loop() {
   // if (mpu.update()) {
   //   static uint32_t prev_ms = millis();
@@ -109,11 +161,12 @@ void loop() {
   // 目的地までの角度に応じた，車輪のPWM値を求める
   // 緯度・経度の取得成功後
   // 前進
-  // motor.move_straight(pwm_value);
+  TinyGPSPlus::distanceBetween(double lat1, double long1, double lat2, double long2)
+  motor.move_straight(pwm_value);
   // ここをいじって動かす時間を調整する
+  delay(3000);
   // 停止
-  // motor.stop_motor();
-
+  motor.stop_motor();
 }
 
 /*
@@ -122,6 +175,7 @@ double course_to_goal(double start_lat, double start_lng, double goal_lat, doubl
   return TinyGPSPlus::courseTo(start_lat, start_lng, goal_lat, goal_lng);
 }
 */
+
 
 // 最初の角度を合わせるための制御用ループ関数
 void decide_first_course_loop() {
@@ -139,7 +193,8 @@ void decide_first_course_loop() {
         double goal_yaw_degree = TinyGPSPlus::courseTo(lat_lng[0], lat_lng[1], goal_lat, goal_lng); // (0 - 359)
         double degree_gap = goal_yaw_degree - current_yaw_degree;
         // Serial.println(degree_gap);
-        print_yaw_gap();
+        // print_yaw_gap();
+        write_yaw_gap();
         // TODO:角度の誤差許容値をとりあえず20に設定する
         double error_range = 20.0;
         // 少なくとも一方の角度が北のときは値が大きくブレるため、二つの条件でその差の比較を行う
@@ -166,6 +221,31 @@ void print_yaw_gap(){
   Serial.print(goal_yaw_degree, 2);
   Serial.print(", ");
   Serial.println(abs(current_yaw_degree - goal_yaw_degree), 2);
+}
+
+void write_yaw_gap(){
+  String val_name = String("current_yaw_degree, goal_yaw_degree, gap_degree: \n");
+  log_message += val_name;
+
+  double current_yaw_degree = mpu.getYaw() + 180.0;
+  String current_yaw_degree_str = String(current_yaw_degree, 2);
+  log_message += current_yaw_degree_str + String(",");
+
+  std::vector<double> lat_lng = get_lat_lng();
+  double goal_yaw_degree = TinyGPSPlus::courseTo(lat_lng[0], lat_lng[1], goal_lat, goal_lng);
+  String goal_yaw_degree_str = String(goal_yaw_degree, 2);
+  String gap_degree_str = String(abs(current_yaw_degree - goal_yaw_degree), 2);
+  log_message += goal_yaw_degree_str + String(",");
+  log_message += gap_degree_str + String("\n");
+
+  Serial.print(current_yaw_degree_str);
+  Serial.print(", ");
+  Serial.print(goal_yaw_degree_str);
+  Serial.print(", ");
+  Serial.println(gap_degree_str);
+
+  sd.appendFileString(SD, log_filename.c_str(), log_message);
+  log_message.clear();
 }
 
 void print_roll_pitch_yaw() {

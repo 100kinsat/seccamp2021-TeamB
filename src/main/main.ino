@@ -28,6 +28,7 @@ const int pwm_value = 100; // for debug
 static const uint32_t GPSBaud = 9600;
 TinyGPSPlus gps;
 HardwareSerial ss(2);
+static const bool ENABLE_GPS = true;
 
 // 目的地の緯度・経度を設定(テスト時に書き換え)
 const double goal_lat = 51.508131;
@@ -97,6 +98,7 @@ void setup() {
   // どれだけキャリブレーションしたかファイルに書き込む（いる？）
 }
 
+// ref: https://github.com/ny-a/100kinsat-data-logger/blob/main/src/fast-calibrate/fast-calibrate.ino
 void createNewLogFile() {
   current_log_number++;
   sd.writeFileInt(SD, PREVIOUS_NUMBER_FILE, current_log_number);
@@ -109,19 +111,19 @@ void createNewLogFile() {
   log_filename += String(current_log_number);
   log_filename += String(".csv");
 
-  // String message = "";
+  String message = "";
 
-  // if (ENABLE_GPS) {
-  //   message += String("GPS,Testing TinyGPS++ library v. ");
-  //   message += String(TinyGPSPlus::libraryVersion());
-  //   message += String("\n");
-  //   message += String("GPS,Sats,HDOP,Latitude,Longitude,Fix Age,Date,Time,DateAge,Alt,Course,Speed,Card,DistanceToG,CourseToG,CardToG,CharsRX,SentencesRX,ChecksumFail\n");
-  // }
+  if (ENABLE_GPS) {
+    message += String("GPS,Testing TinyGPS++ library v. ");
+    message += String(TinyGPSPlus::libraryVersion());
+    message += String("\n");
+    // message += String("GPS,Latitude,Longitude,Fix Age,Date,Time,DateAge,Alt,Course,Speed,Card,DistanceToG,CourseToG,CardToG,CharsRX,SentencesRX,ChecksumFail\n");
+    // message += String("GPS,Sats,HDOP,Latitude,Longitude,Fix Age,Date,Time,DateAge,Alt,Course,Speed,Card,DistanceToG,CourseToG,CardToG,CharsRX,SentencesRX,ChecksumFail\n");
+  }
 
   // message += String("MPU9250,Yaw,Pitch,Roll,AccelX,AccelY,AccelZ,GyroX,GyroY,GyroZ,MagX,MagY,MagZ,MyYaw\n");
-  // Serial.print(message);
-  String msg = String("create new file\n");
-  sd.appendFileString(SD, log_filename.c_str(), msg);
+  Serial.print(message);
+  sd.appendFileString(SD, log_filename.c_str(), message);
 }
 
 
@@ -199,6 +201,10 @@ void decide_first_course_loop() {
         // Serial.println(degree_gap);
         // print_yaw_gap();
         write_yaw_gap();
+        String message = readGPSvalue();
+        message += readMPU9250value();
+        sd.appendFileString(SD, log_filename.c_str(), message);
+
         // TODO:角度の誤差許容値をとりあえず20に設定する
         double error_range = 20.0;
         // 少なくとも一方の角度が北のときは値が大きくブレるため、二つの条件でその差の比較を行う
@@ -250,6 +256,85 @@ void write_yaw_gap(){
 
   sd.appendFileString(SD, log_filename.c_str(), log_message);
   log_message.clear();
+}
+
+String readMPU9250value() {
+  String message = "";
+  message += "Yaw, Pitch, Roll: \n";
+  message += String(mpu.getYaw(), 2);
+  message += String(",");
+  message += String(mpu.getPitch(), 2);
+  message += String(",");
+  message += String(mpu.getRoll(), 2);
+  message += String("\n");
+
+  message += "Acc, Gyro, Mag: \n";
+  message += String(mpu.getAccX(), 6);
+  message += String(",");
+  message += String(mpu.getAccY(), 6);
+  message += String(",");
+  message += String(mpu.getAccZ(), 6);
+  message += String(",");
+
+  message += String(mpu.getGyroX(), 6);
+  message += String(",");
+  message += String(mpu.getGyroY(), 6);
+  message += String(",");
+  message += String(mpu.getGyroZ(), 6);
+  message += String(",");
+
+  message += String(mpu.getMagX(), 6);
+  message += String(",");
+  message += String(mpu.getMagY(), 6);
+  message += String(",");
+  message += String(mpu.getMagZ(), 6);
+  message += String("\n");
+  return message;
+}
+
+String readGPSvalue() {
+  String message = String("GPS,Sats,Latitude,Longitude,Fix Age,Date,Time,DateAge: \n");
+  if (gps.satellites.isValid()) {
+    message += String(gps.satellites.value());
+  }
+  message += String(",");
+
+  std::vector<double> lat_lng = get_lat_lng();
+  message += String(lat_lng[0]); // lat
+  message += String(",");
+  message += String(lat_lng[1]); // lng
+  message += String(",");
+
+  if (gps.location.isValid()) {
+    message += String(gps.location.age());
+  }
+  message += String(",");
+
+  if (gps.date.isValid())
+  {
+    message += String(gps.date.year());
+    message += String("-");
+    message += String(gps.date.month());
+    message += String("-");
+    message += String(gps.date.day());
+    message += String("T");
+  }
+  if (gps.time.isValid())
+  {
+    message += String(gps.time.hour());
+    message += String(":");
+    message += String(gps.time.minute());
+    message += String(":");
+    message += String(gps.time.second());
+  }
+  message += String(",");
+
+  if (gps.date.isValid())
+  {
+    message += String(gps.date.age());
+  }
+  message += String("\n");
+  return message;
 }
 
 void print_roll_pitch_yaw() {

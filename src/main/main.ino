@@ -23,6 +23,7 @@ Speaker speaker = Speaker();
 // Motor
 Motor motor = Motor();
 const int pwm_value = 100; // for debug
+const int DELAY_VALUE = 3000;
 
 // GPS
 static const uint32_t GPSBaud = 9600;
@@ -164,9 +165,17 @@ void loop() {
     exit(0);
   }
   motor.move_straight(pwm_value); // 前進
+  delay(DELAY_VALUE);
+  String message = String("move straight:") + String(DELAY_VALUE) + String("[ms]\n");
+  write_file(message);
   // ここをいじって動かす時間を調整する
-  delay(3000);
   motor.stop_motor(); // 停止
+  message = "stop motor\n";
+  write_file(message);
+}
+
+void write_file(String &message) {
+  sd.appendFileString(SD, log_filename.c_str(), message);
 }
 
 /*
@@ -201,8 +210,8 @@ void decide_first_course_loop() {
         // Serial.println(degree_gap);
         // print_yaw_gap();
         write_yaw_gap();
-        String message = readGPSvalue();
-        message += readMPU9250value();
+        String message = readMPU9250value();
+        message += readGPSvalue();
         sd.appendFileString(SD, log_filename.c_str(), message);
 
         // TODO:角度の誤差許容値をとりあえず20に設定する
@@ -268,7 +277,7 @@ String readMPU9250value() {
   message += String(mpu.getRoll(), 2);
   message += String("\n");
 
-  message += "Acc, Gyro, Mag: \n";
+  message += "AccX, AccY, AccZ, GyroX, GyroY, GyroZ, MagX, MagY, MagZ: \n";
   message += String(mpu.getAccX(), 6);
   message += String(",");
   message += String(mpu.getAccY(), 6);

@@ -93,7 +93,7 @@ void setup() {
   speaker.tone(100); // スピーカーON
   speaker.noTone();
 
-  print_calibration();
+  write_calibration();
   mpu.verbose(false);
 
   // どれだけキャリブレーションしたかファイルに書き込む（いる？）
@@ -355,34 +355,40 @@ void print_roll_pitch_yaw() {
     Serial.println(mpu.getRoll(), 2);
 }
 
-void print_calibration() {
-    Serial.println("< calibration parameters >");
-    Serial.println("accel bias [g]: ");
-    Serial.print(mpu.getAccBiasX() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
-    Serial.print(", ");
-    Serial.print(mpu.getAccBiasY() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
-    Serial.print(", ");
-    Serial.print(mpu.getAccBiasZ() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
-    Serial.println();
-    Serial.println("gyro bias [deg/s]: ");
-    Serial.print(mpu.getGyroBiasX() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
-    Serial.print(", ");
-    Serial.print(mpu.getGyroBiasY() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
-    Serial.print(", ");
-    Serial.print(mpu.getGyroBiasZ() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
-    Serial.println();
-    Serial.println("mag bias [mG]: ");
-    Serial.print(mpu.getMagBiasX());
-    Serial.print(", ");
-    Serial.print(mpu.getMagBiasY());
-    Serial.print(", ");
-    Serial.print(mpu.getMagBiasZ());
-    Serial.println();
-    Serial.println("mag scale []: ");
-    Serial.print(mpu.getMagScaleX());
-    Serial.print(", ");
-    Serial.print(mpu.getMagScaleY());
-    Serial.print(", ");
-    Serial.print(mpu.getMagScaleZ());
-    Serial.println();
+void write_calibration() {
+  String message = "";
+  message += String("< calibration parameters >\n");
+  message += String("accel bias [g]: ");
+  message += String(mpu.getAccBiasX() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+  message += String(",");
+  message += String(mpu.getAccBiasY() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+  message += String(",");
+  message += String(mpu.getAccBiasZ() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
+  message += String("\n");
+
+  message += "gyro bias [deg/s]: ";
+  message += String(mpu.getGyroBiasX() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+  message += String(",");
+  message += String(mpu.getGyroBiasY() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+  message += String(",");
+  message += String(mpu.getGyroBiasZ() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
+  message += String("\n");
+
+  message += "mag bias [mG]: ";
+  message += String(mpu.getMagBiasX());
+  message += String(",");
+  message += String(mpu.getMagBiasY());
+  message += String(",");
+  message += String(mpu.getMagBiasZ());
+  message += String("\n");
+
+  message += "mag scale []: ";
+  message += String(mpu.getMagScaleX());
+  message += String(",");
+  message += String(mpu.getMagScaleX());
+  message += String(",");
+  message += String(mpu.getMagScaleZ());
+  message += String("\n");
+
+  sd.appendFileString(SD, log_filename.c_str(), message);
 }

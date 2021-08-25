@@ -15,15 +15,16 @@ Led led = Led();
 // SPEAKER
 Speaker speaker = Speaker();
 
-// 9軸センサの利用
-// std::vector<double> accel;
-// std::vector<double> gyro;
-// std::vector<double> mag;
-
 // Motor
 Motor motor = Motor();
-const int pwm_value = 100; // for debug
-const int DELAY_VALUE = 3000;
+
+////// for debug
+const int ROTATE_PWM_VALUE = 40;
+const int PWM_VALUE = 200;
+const int STRAIGHT_TIME = 10000;   // 10000 ~ 15000
+// Yaw
+const double ERROR_RANGE = 10.0;  // 10/20/30
+//////
 
 // GPS
 static const uint32_t GPSBaud = 9600;
@@ -118,11 +119,7 @@ void createNewLogFile() {
     message += String("GPS,Testing TinyGPS++ library v. ");
     message += String(TinyGPSPlus::libraryVersion());
     message += String("\n");
-    // message += String("GPS,Latitude,Longitude,Fix Age,Date,Time,DateAge,Alt,Course,Speed,Card,DistanceToG,CourseToG,CardToG,CharsRX,SentencesRX,ChecksumFail\n");
-    // message += String("GPS,Sats,HDOP,Latitude,Longitude,Fix Age,Date,Time,DateAge,Alt,Course,Speed,Card,DistanceToG,CourseToG,CardToG,CharsRX,SentencesRX,ChecksumFail\n");
   }
-
-  // message += String("MPU9250,Yaw,Pitch,Roll,AccelX,AccelY,AccelZ,GyroX,GyroY,GyroZ,MagX,MagY,MagZ,MyYaw\n");
   Serial.print(message);
   sd.appendFileString(SD, log_filename.c_str(), message);
 }
@@ -164,8 +161,8 @@ void loop() {
     sd.appendFileString(SD, log_filename.c_str(), finish);
     exit(0);
   }
-  motor.move_straight(pwm_value); // 前進
-  delay(DELAY_VALUE);
+  motor.move_straight(PWM_VALUE); // 前進
+  delay(STRAIGHT_TIME);
   String message = String("move straight:") + String(DELAY_VALUE) + String("[ms]\n");
   write_file(message);
   // ここをいじって動かす時間を調整する
@@ -192,11 +189,12 @@ void is_goal() {
   // https://akizukidenshi.com/catalog/g/gK-09991/ より、測位確度：2mであるため、余裕をもって3,4m近づいたら停止で良いような気がしてます
 }
 
+
 // 最初の角度を合わせるための制御用ループ関数
 void decide_first_course_loop() {
 
   // 回転
-  motor.forward_to_goal(80);
+  motor.forward_to_goal(ROTATE_PWM_VALUE);
 
   while(1) {
     if(mpu.update()) {
@@ -207,29 +205,29 @@ void decide_first_course_loop() {
         std::vector<double> lat_lng = get_lat_lng();
         double goal_yaw_degree = TinyGPSPlus::courseTo(lat_lng[0], lat_lng[1], goal_lat, goal_lng); // (0 - 359)
         double degree_gap = goal_yaw_degree - current_yaw_degree;
-        // Serial.println(degree_gap);
         // print_yaw_gap();
         write_yaw_gap();
         String message = readMPU9250value();
         message += readGPSvalue();
-        sd.appendFileString(SD, log_filename.c_str(), message);
 
-        // TODO:角度の誤差許容値をとりあえず20に設定する
-        double error_range = 20.0;
         // 少なくとも一方の角度が北のときは値が大きくブレるため、二つの条件でその差の比較を行う
-        if(abs(degree_gap) <= error_range || degree_gap >= 360 - error_range ) {
+        if(abs(degree_gap) <= ERROR_RANGE || degree_gap >= 360 - ERROR_RANGE ) {
           // 許容値
           motor.stop_motor();
+          sd.appendFileString(SD, log_filename.c_str(), message); // file I/O:停止後
+
+          speaker.tone(100); // スピーカーON
+          speaker.noTone();
           delay(3000);          // 止まった挙動を確認するため
           break;
         }
+        sd.appendFileString(SD, log_filename.c_str(), message); // file I/O:gap判定を終えてから
         prev_ms = millis();
       }
     }
   }
   // 角度の確認
 }
-
 void print_yaw_gap(){
   Serial.print("current_yaw_degree, goal_yaw_degree, gap_degree: ");
   double current_yaw_degree = mpu.getYaw() + 180.0;
@@ -307,12 +305,14 @@ String readGPSvalue() {
     message += String(gps.satellites.value());
   }
   message += String(",");
+  if (gps.location.isValid()) {
+    message += String(gps.location.lat(), 6);
+  }
+  message += String(",");
 
-  std::vector<double> lat_lng = get_lat_lng();
-  message += String(lat_lng[0]); // lat
-  message += String(",");
-  message += String(lat_lng[1]); // lng
-  message += String(",");
+  if (gps.location.isValid()) {
+    message += String(gps.location.lng(), 6);
+  }
 
   if (gps.location.isValid()) {
     message += String(gps.location.age());
@@ -359,6 +359,7 @@ void write_calibration() {
   String message = "";
   message += String("< calibration parameters >\n");
   message += String("accel bias [g]: ");
+  message += String(",");
   message += String(mpu.getAccBiasX() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
   message += String(",");
   message += String(mpu.getAccBiasY() * 1000.f / (float)MPU9250::CALIB_ACCEL_SENSITIVITY);
@@ -367,6 +368,7 @@ void write_calibration() {
   message += String("\n");
 
   message += "gyro bias [deg/s]: ";
+  message += String(",");
   message += String(mpu.getGyroBiasX() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
   message += String(",");
   message += String(mpu.getGyroBiasY() / (float)MPU9250::CALIB_GYRO_SENSITIVITY);
@@ -375,6 +377,7 @@ void write_calibration() {
   message += String("\n");
 
   message += "mag bias [mG]: ";
+  message += String(",");
   message += String(mpu.getMagBiasX());
   message += String(",");
   message += String(mpu.getMagBiasY());
@@ -383,6 +386,7 @@ void write_calibration() {
   message += String("\n");
 
   message += "mag scale []: ";
+  message += String(",");
   message += String(mpu.getMagScaleX());
   message += String(",");
   message += String(mpu.getMagScaleX());

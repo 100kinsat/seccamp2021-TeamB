@@ -163,7 +163,7 @@ void loop() {
   }
   motor.move_straight(PWM_VALUE); // 前進
   delay(STRAIGHT_TIME);
-  String message = String("move straight:") + String(DELAY_VALUE) + String("[ms]\n");
+  String message = String("move straight:") + String(STRAIGHT_TIME) + String("[ms]\n");
   write_file(message);
   // ここをいじって動かす時間を調整する
   motor.stop_motor(); // 停止

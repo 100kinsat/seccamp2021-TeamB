@@ -300,7 +300,7 @@ String readMPU9250value() {
 }
 
 String readGPSvalue() {
-  String message = String("GPS,Sats,Latitude,Longitude,Fix Age,Date,Time,DateAge: \n");
+  String message = String("GPS:Sats,Latitude,Longitude,Fix Age,Date,Time,DateAge: \n");
   if (gps.satellites.isValid()) {
     message += String(gps.satellites.value());
   }

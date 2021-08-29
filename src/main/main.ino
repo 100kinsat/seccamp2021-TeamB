@@ -20,8 +20,9 @@ Motor motor = Motor();
 
 ////// for debug
 const int ROTATE_PWM_VALUE = 40;
-const int PWM_VALUE = 200;
+const int STRAIGHT_PWM_VALUE = 200;
 const int STRAIGHT_TIME = 10000;   // 10000 ~ 15000
+const int DELAY_AFTER_ROTATE = 500
 // Yaw
 const double ERROR_RANGE = 10.0;  // 10/20/30
 //////
@@ -161,7 +162,7 @@ void loop() {
     sd.appendFileString(SD, log_filename.c_str(), finish);
     exit(0);
   }
-  motor.move_straight(PWM_VALUE); // 前進
+  motor.move_straight(STRAIGHT_PWM_VALUE); // 前進
   delay(STRAIGHT_TIME);
   String message = String("move straight:") + String(STRAIGHT_TIME) + String("[ms]\n");
   write_file(message);
@@ -218,7 +219,7 @@ void decide_first_course_loop() {
 
           speaker.tone(100); // スピーカーON
           speaker.noTone();
-          delay(3000);          // 止まった挙動を確認するため
+          delay(DELAY_AFTER_ROTATE);          // 止まった挙動を確認するため
           break;
         }
         sd.appendFileString(SD, log_filename.c_str(), message); // file I/O:gap判定を終えてから

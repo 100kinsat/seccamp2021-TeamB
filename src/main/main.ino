@@ -24,7 +24,7 @@ const int STRAIGHT_PWM_VALUE = 200;
 const int STRAIGHT_TIME = 10000;   // 10000 ~ 15000
 const int DELAY_AFTER_ROTATE = 500
 // Yaw
-const double ERROR_RANGE = 10.0;  // 10/20/30
+const double ERROR_RANGE = 15.0;  // 10/20/30
 //////
 
 // GPS

@@ -22,7 +22,7 @@ Motor motor = Motor();
 const int ROTATE_PWM_VALUE = 40;
 const int STRAIGHT_PWM_VALUE = 200;
 const int STRAIGHT_TIME = 10000;   // 10000 ~ 15000
-const int DELAY_AFTER_ROTATE = 500
+const int DELAY_AFTER_ROTATE = 500;
 // Yaw
 const double ERROR_RANGE = 15.0;  // 10/20/30
 //////
@@ -167,6 +167,13 @@ void loop() {
   String message = String("move straight:") + String(STRAIGHT_TIME) + String("[ms]\n");
   write_file(message);
   // ここをいじって動かす時間を調整する
+  // モーターを止めないで、角度を測ってずれてたらとまる、ずれてなかったらとまらないコードを書きたい
+  double yaw_gap = calc_degree_gap();
+  // 走っている途中なのでエラーレンジは大きめにとる(TODO: エラーレンジの値，ロギング（GPS, MPU9250, distance）)
+  while(abs(yaw_gap) <= ERROR_RANGE*2){
+    delay(STRAIGHT_TIME);
+    yaw_gap = calc_degree_gap();
+  }
   motor.stop_motor(); // 停止
   message = "stop motor\n";
   write_file(message);
@@ -183,6 +190,20 @@ void is_goal() {
   // https://akizukidenshi.com/catalog/g/gK-09991/ より、測位確度：2mであるため、余裕をもって3,4m近づいたら停止で良いような気がしてます
 }
 
+// 現在の位置情報とゴールの位置情報からYawの差を求める
+double calc_degree_gap() {
+  double degree_gap;
+  while(1) {
+    if(mpu.update()) {
+      double current_yaw_degree = mpu.getYaw() + 180; // (-180 - 180) -> (0 - 359) に合わせる
+      std::vector<double> lat_lng = get_lat_lng();
+      double goal_yaw_degree = TinyGPSPlus::courseTo(lat_lng[0], lat_lng[1], goal_lat, goal_lng); // (0 - 359)
+      degree_gap = goal_yaw_degree - current_yaw_degree;
+      break;
+    }
+  }
+  return degree_gap;
+}
 
 // 最初の角度を合わせるための制御用ループ関数
 void decide_first_course_loop() {

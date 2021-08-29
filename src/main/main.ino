@@ -19,7 +19,7 @@ Speaker speaker = Speaker();
 Motor motor = Motor();
 
 ////// for debug
-const int ROTATE_PWM_VALUE = 40;
+const int ROTATE_PWM_VALUE = 60;
 const int STRAIGHT_PWM_VALUE = 200;
 const int STRAIGHT_TIME = 10000;   // 10000 ~ 15000
 const int DELAY_AFTER_ROTATE = 500;

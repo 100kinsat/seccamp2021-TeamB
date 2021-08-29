@@ -176,13 +176,6 @@ void write_file(String &message) {
   sd.appendFileString(SD, log_filename.c_str(), message);
 }
 
-/*
-// 現在位置に対する目的地の角度を求める  不要
-double course_to_goal(double start_lat, double start_lng, double goal_lat, double goal_lng) {
-  return TinyGPSPlus::courseTo(start_lat, start_lng, goal_lat, goal_lng);
-}
-*/
-
 // ゴール付近か確認する．
 void is_goal() {
   // 現在位置と目的地のGPSの値から(ユークリッド)距離を求めて，？m以内ならゴールと判定する．

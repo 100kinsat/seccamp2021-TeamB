@@ -81,14 +81,28 @@ void Motor::move_left() {}
 /**
  * 目的地の方向へ向くためのコード
  */
-void Motor::forward_to_goal(int pwm) {
+// 時計回り (yawの+方向)
+void Motor::forward_to_goal_right(int pwm) {
   // 左モータ（CCW，反時計回り）
   digitalWrite(motorA[1], LOW);
   digitalWrite(motorA[0], HIGH);
   ledcWrite(CHANNEL_A, pwm);
 
   // 右モータ（CW，時計回り）
-  digitalWrite(motorB[1], HIGH);
-  digitalWrite(motorB[0], LOW);
+  digitalWrite(motorB[1], LOW);
+  digitalWrite(motorB[0], HIGH);
+  ledcWrite(CHANNEL_B, HIGH);
+}
+
+// 反時計回り (yawの-方向)
+void Motor::forward_to_goal_left(int pwm) {
+  // 左モータ（CCW，反時計回り）
+  digitalWrite(motorA[1], LOW);
+  digitalWrite(motorA[0], HIGH);
+  ledcWrite(CHANNEL_A, HIGH);
+
+  // 右モータ（CW，時計回り）
+  digitalWrite(motorB[1], LOW);
+  digitalWrite(motorB[0], HIGH);
   ledcWrite(CHANNEL_B, pwm);
 }

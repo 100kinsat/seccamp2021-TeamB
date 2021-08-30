@@ -233,8 +233,6 @@ void decide_first_course_loop() {
         if(degree_gap >= ERROR_RANGE || degree_gap >= 180 ) {
           motor.forward_to_goal_left(ROTATE_PWM_VALUE);
           sd.appendFileString(SD, log_filename.c_str(), message); // file I/O:停止後
-          speaker.tone(100); // スピーカーON
-          speaker.noTone();
           prev_ms = millis();
           continue;
         }
@@ -243,12 +241,12 @@ void decide_first_course_loop() {
         if(degree_gap <= -1 * ERROR_RANGE || degree_gap <= -180 ) {
           motor.forward_to_goal_right(ROTATE_PWM_VALUE);
           sd.appendFileString(SD, log_filename.c_str(), message); // file I/O:停止後
-          speaker.tone(100); // スピーカーON
-          speaker.noTone();
           prev_ms = millis();
           continue;
         }
         motor.stop_motor();
+        speaker.tone(100); // スピーカーON
+        speaker.noTone();
         sd.appendFileString(SD, log_filename.c_str(), message); // file I/O:gap判定を終えてから
         break;
       }

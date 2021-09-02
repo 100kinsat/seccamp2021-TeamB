@@ -19,15 +19,16 @@ Speaker speaker = Speaker();
 Motor motor = Motor();
 
 ////// for debug
-const int ROTATE_PWM_VALUE = 80;
+const int ROTATE_PWM_VALUE = 255;
 const int ERROR_ROTATE_PWM_VALUE = 255; // ハマった時のPWMの値
 const int ERROR_ROTATE_TIME = 4000; // ハマった時の回転する秒数
 const int STRAIGHT_PWM_VALUE = 255;
-const int DELAY_TIME = 3000;
+const int DELAY_TIME = 3000;       // 停止時間
+const int ROTAION_TIME = 1000;     // 回転時間
 const int STRAIGHT_TIME = 10000;   // 10000 ~ 15000
 const int MAX_ROTATE_LOOP_COUNT = 10; // ハマった時の上限
 // Yaw
-const double ERROR_RANGE = 35.0;
+const double ERROR_RANGE = 20.0;
 //////
 
 // GPS
@@ -231,21 +232,21 @@ void decide_first_course_loop() {
   // motor.forward_to_goal(ROTATE_PWM_VALUE);
 
   while(1) {
-    motor.stop_motor();
-    delay(DELAY_TIME);
-    String message = "stop motor\n";
-    write_file(message);
     if(mpu.update()) {
       static uint32_t prev_ms = millis();
         if (millis() > prev_ms + 25) {
         // 現在の角度の確認
+        motor.stop_motor();
+        String message = "stop motor\n";
+        write_file(message);
+        
         double current_yaw_degree = mpu.getYaw() + 180; // (-180 - 180) -> (0 - 359) に合わせる
         std::vector<double> lat_lng = get_lat_lng();
         double goal_yaw_degree = TinyGPSPlus::courseTo(lat_lng[0], lat_lng[1], goal_lat, goal_lng); // (0 - 359)
         double degree_gap = goal_yaw_degree - current_yaw_degree;
         Serial.print("degree_gap: ");
         Serial.println(degree_gap);
-        String message = String("degree_gap: ") + String(degree_gap) + String("\n");
+        message = String("degree_gap: ") + String(degree_gap) + String("\n");
         write_yaw_gap();
         message += readMPU9250value();
         message += readGPSvalue();
@@ -260,32 +261,46 @@ void decide_first_course_loop() {
           delay(ERROR_ROTATE_TIME); // 4，5秒ぐらいで半回転（床:理想状態）. yawの値で半回転したと判定できれば理想
           String message = String("MAX_ROTATE_LOOP_COUNT over! left rotation:") + String(ERROR_ROTATE_TIME) + String("[ms]\n");
           rotate_loop_count = 0;
+          prev_ms = millis();
           continue;
         }
         
         // +方向にgapがある時
-        if( -180 <= degree_gap < -1 * ERROR_RANGE || 180 < degree_gap ) {
+        if((-180 <= degree_gap && degree_gap < -1 * ERROR_RANGE) || 180 < degree_gap ) {
           // left側に動かす
           rotate_loop_count++;
           motor.forward_to_goal_left(ROTATE_PWM_VALUE);
-          message += String("left rotation\n");
+          // delay(ROTAION_TIME);
+          message += String("left rotation") + String(ROTAION_TIME) + String("[ms]\n");
           Serial.println("left rotation");
-          sd.appendFileString(SD, log_filename.c_str(), message);
+          // motor.stop_motor();
+          // delay(DELAY_TIME);
+          // message += "stop motor\n";
+          write_file(message);
+          // sd.appendFileString(SD, log_filename.c_str(), message);
           prev_ms = millis();
           continue;
         }
-        
         // -方向にgapがある時
-        if( degree_gap >= ERROR_RANGE || degree_gap < -180) {
+        else if( degree_gap >= ERROR_RANGE || degree_gap < -180) {
           // right側に動かす
           rotate_loop_count++;
           motor.forward_to_goal_right(ROTATE_PWM_VALUE);
-          message += String("right rotation\n");
+          // delay(ROTAION_TIME);
+          message += String("right rotation") + String(ROTAION_TIME) + String("[ms]\n");
           Serial.println("right rotation");
-          sd.appendFileString(SD, log_filename.c_str(), message);
+          // motor.stop_motor();
+          // delay(DELAY_TIME);
+          // message += "stop motor\n";
+          write_file(message);
+          // sd.appendFileString(SD, log_filename.c_str(), message);
           prev_ms = millis();
           continue;
         }
+        else {
+          message += String("fixed angle is ") + String(ROTAION_TIME) + String(" degree\n");
+        }
+        
         speaker.tone(50); // スピーカーON
         speaker.noTone();
         break;

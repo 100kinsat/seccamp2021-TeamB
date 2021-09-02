@@ -23,6 +23,7 @@ const int ROTATE_PWM_VALUE = 80;
 const int ERROR_ROTATE_PWM_VALUE = 255; // ハマった時のPWMの値
 const int ERROR_ROTATE_TIME = 4000; // ハマった時の回転する秒数
 const int STRAIGHT_PWM_VALUE = 255;
+const int DELAY_TIME = 3000;
 const int STRAIGHT_TIME = 10000;   // 10000 ~ 15000
 const int MAX_ROTATE_LOOP_COUNT = 10; // ハマった時の上限
 // Yaw
@@ -167,9 +168,11 @@ void loop() {
   motor.move_straight(STRAIGHT_PWM_VALUE); // 前進
   delay(STRAIGHT_TIME);
   String message = String("move straight:") + String(STRAIGHT_TIME) + String("[ms]\n");
+  Serial.println(message);
   write_file(message);
   // ここをいじって動かす時間を調整する
   // モーターを止めないで、角度を測ってずれてたらとまる、ずれてなかったらとまらないコードを書きたい
+  /*
   double yaw_gap = calc_degree_gap();
   // 走っている途中なのでエラーレンジは大きめにとる(TODO: エラーレンジの値，ロギング（GPS, MPU9250, distance）)
   while(abs(yaw_gap) <= ERROR_RANGE){
@@ -186,9 +189,11 @@ void loop() {
     message +=  String(distance_value) + String("\n");
     
     write_file(message);
-  }
+  }*/
   motor.stop_motor(); // 停止
+  delay(DELAY_TIME);
   message = "stop motor\n";
+  Serial.println(message);
   write_file(message);
 }
 
@@ -226,6 +231,10 @@ void decide_first_course_loop() {
   // motor.forward_to_goal(ROTATE_PWM_VALUE);
 
   while(1) {
+    motor.stop_motor();
+    delay(DELAY_TIME);
+    String message = "stop motor\n";
+    write_file(message);
     if(mpu.update()) {
       static uint32_t prev_ms = millis();
         if (millis() > prev_ms + 25) {
@@ -234,10 +243,14 @@ void decide_first_course_loop() {
         std::vector<double> lat_lng = get_lat_lng();
         double goal_yaw_degree = TinyGPSPlus::courseTo(lat_lng[0], lat_lng[1], goal_lat, goal_lng); // (0 - 359)
         double degree_gap = goal_yaw_degree - current_yaw_degree;
+        Serial.print("degree_gap: ");
+        Serial.println(degree_gap);
+        String message = String("degree_gap: ") + String(degree_gap) + String("\n");
         write_yaw_gap();
-        String message = readMPU9250value();
+        message += readMPU9250value();
         message += readGPSvalue();
-
+        write_file(message);
+        
         // 少なくとも一方の角度が北のときは値が大きくブレるため、二つの条件でその差の比較を行う
         // GAPを埋める方向に回転する ex. degree_gapが+なら-方向に回転する。
 
@@ -273,12 +286,8 @@ void decide_first_course_loop() {
           prev_ms = millis();
           continue;
         }
-        motor.stop_motor();
         speaker.tone(50); // スピーカーON
         speaker.noTone();
-        sd.appendFileString(SD, log_filename.c_str(), message); // file I/O:gap判定を終えてから
-        message = "stop motor\n";
-        write_file(message);
         break;
       }
     }

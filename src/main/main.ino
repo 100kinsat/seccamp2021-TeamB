@@ -19,7 +19,7 @@ Speaker speaker = Speaker();
 Motor motor = Motor();
 
 ////// for debug
-const int ROTATE_PWM_VALUE = 255;
+const int ROTATE_PWM_VALUE = 255;       // 回転時のPWM
 const int ERROR_ROTATE_PWM_VALUE = 255; // ハマった時のPWMの値
 const int ERROR_ROTATE_TIME = 4000; // ハマった時の回転する秒数
 const int STRAIGHT_PWM_VALUE = 255;
@@ -235,22 +235,22 @@ void decide_first_course_loop() {
     if(mpu.update()) {
       static uint32_t prev_ms = millis();
         if (millis() > prev_ms + 25) {
-        // 現在の角度の確認
+        // 安定したyawの値を取るために，一度止める
         motor.stop_motor();
-        String message = "stop motor\n";
-        write_file(message);
-        
+        log_message = "stop motor\n";
+        write_file(log_message);
+        // 現在の角度の確認
         double current_yaw_degree = mpu.getYaw() + 180; // (-180 - 180) -> (0 - 359) に合わせる
         std::vector<double> lat_lng = get_lat_lng();
         double goal_yaw_degree = TinyGPSPlus::courseTo(lat_lng[0], lat_lng[1], goal_lat, goal_lng); // (0 - 359)
         double degree_gap = goal_yaw_degree - current_yaw_degree;
         Serial.print("degree_gap: ");
         Serial.println(degree_gap);
-        message = String("degree_gap: ") + String(degree_gap) + String("\n");
+        log_message = String("degree_gap: ") + String(degree_gap) + String("\n");
         write_yaw_gap();
-        message += readMPU9250value();
-        message += readGPSvalue();
-        write_file(message);
+        log_message += readMPU9250value();
+        log_message += readGPSvalue();
+        write_file(log_message);
         
         // 少なくとも一方の角度が北のときは値が大きくブレるため、二つの条件でその差の比較を行う
         // GAPを埋める方向に回転する ex. degree_gapが+なら-方向に回転する。
@@ -259,7 +259,8 @@ void decide_first_course_loop() {
         if(MAX_ROTATE_LOOP_COUNT < rotate_loop_count) {
           motor.forward_to_goal_left(ERROR_ROTATE_PWM_VALUE);
           delay(ERROR_ROTATE_TIME); // 4，5秒ぐらいで半回転（床:理想状態）. yawの値で半回転したと判定できれば理想
-          String message = String("MAX_ROTATE_LOOP_COUNT over! left rotation:") + String(ERROR_ROTATE_TIME) + String("[ms]\n");
+          log_message = String("MAX_ROTATE_LOOP_COUNT over! left rotation:") + String(ERROR_ROTATE_TIME) + String("[ms]\n");
+          write_file(log_message);
           rotate_loop_count = 0;
           prev_ms = millis();
           continue;
@@ -271,13 +272,12 @@ void decide_first_course_loop() {
           rotate_loop_count++;
           motor.forward_to_goal_left(ROTATE_PWM_VALUE);
           // delay(ROTAION_TIME);
-          message += String("left rotation") + String(ROTAION_TIME) + String("[ms]\n");
+          log_message = String("left rotation") + String(ROTAION_TIME) + String("[ms]\n");
           Serial.println("left rotation");
           // motor.stop_motor();
           // delay(DELAY_TIME);
-          // message += "stop motor\n";
-          write_file(message);
-          // sd.appendFileString(SD, log_filename.c_str(), message);
+          // log_message += "stop motor\n";
+          write_file(log_message);
           prev_ms = millis();
           continue;
         }
@@ -287,18 +287,18 @@ void decide_first_course_loop() {
           rotate_loop_count++;
           motor.forward_to_goal_right(ROTATE_PWM_VALUE);
           // delay(ROTAION_TIME);
-          message += String("right rotation") + String(ROTAION_TIME) + String("[ms]\n");
+          log_message = String("right rotation") + String(ROTAION_TIME) + String("[ms]\n");
           Serial.println("right rotation");
           // motor.stop_motor();
           // delay(DELAY_TIME);
-          // message += "stop motor\n";
-          write_file(message);
-          // sd.appendFileString(SD, log_filename.c_str(), message);
+          // log_message += "stop motor\n";
+          write_file(log_message);
           prev_ms = millis();
           continue;
         }
         else {
-          message += String("fixed angle is ") + String(ROTAION_TIME) + String(" degree\n");
+          log_message += String("fixed angle is ") + String(ROTAION_TIME) + String(" degree\n");
+          write_file(log_message);
         }
         
         speaker.tone(50); // スピーカーON

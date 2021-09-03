@@ -272,7 +272,7 @@ void decide_first_course_loop() {
           // right側に動かす
           rotate_loop_count++;
           motor.forward_to_goal_right(ROTATE_PWM_VALUE);
-          log_message = String("right rotation\n");
+          log_message += String("right rotation\n");
           prev_ms = millis();
           continue;
         }

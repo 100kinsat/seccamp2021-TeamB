@@ -22,10 +22,11 @@ Motor motor = Motor();
 const int ROTATE_PWM_VALUE = 100;       // 回転時のPWM
 const int ERROR_ROTATE_PWM_VALUE = 255; // ハマった時のPWMの値
 const int ERROR_ROTATE_TIME = 2000; // ハマった時の回転する秒数
+const int ERROR_ROTATE_DELAY_TIME = 3000; // ハマった時に回転した後，止まる時間
 const int STRAIGHT_PWM_VALUE = 255;
-const int DELAY_TIME = 3000;       // 停止時間
+const int DELAY_TIME = 15000;       // 直進後の停止時間
 const int ROTAION_TIME = 1000;     // 回転時間
-const int STRAIGHT_TIME = 20000;   // 10000 ~ 15000
+const int STRAIGHT_TIME = 10000;   // 直進時の時間
 const int MAX_ROTATE_LOOP_COUNT = 30; // ハマった時の上限
 // Yaw
 const double ERROR_RANGE = 20.0;
@@ -240,7 +241,7 @@ void decide_first_course_loop() {
           delay(ERROR_ROTATE_TIME); // 4，5秒ぐらいで半回転（床:理想状態）. yawの値で半回転したと判定できれば理想
           log_message += String("MAX_ROTATE_LOOP_COUNT over! left rotation:") + String(ERROR_ROTATE_TIME) + String("[ms]\n");
           motor.stop_motor(); // 安定化のため停止
-          delay(DELAY_TIME);
+          delay(ERROR_ROTATE_DELAY_TIME);
           log_message += String("stop motor\n");
           rotate_loop_count = 0;
           prev_ms = millis();

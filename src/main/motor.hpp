@@ -23,6 +23,11 @@ class Motor {
     void move_left();
     // 目的地の方向へ向くためのコード
     void forward_to_goal(int pwm);
+    // 左回転するためのコード
+    void forward_to_goal_left(int pwm);
+    // 右回転するためのコード
+    void forward_to_goal_right(int pwm);  
+
 
   private:
     // motor

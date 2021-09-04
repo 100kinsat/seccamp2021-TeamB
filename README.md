@@ -22,7 +22,7 @@
 
 ## 実験ログ
 
-実験ログ(.csv): [exp/20210904.csv](exp/20210904.csv)
+[実験ログ(.csv)](log/20210904.csv)
 
 ### 基本データ
 
@@ -39,7 +39,7 @@
 
 ### 経路マップ
 
-[実験ログ](exp/20210904.csv)からlatitudeとlongitudeを取り出し，Google My Mapsに描画([Link](https://www.google.com/maps/d/edit?mid=1gncQSY1DwNDEuz3T8xGdS-zmDTmZJsbg&usp=sharing))
+[実験ログ](log/20210904.csv)からlatitudeとlongitudeを取り出し，Google My Mapsに描画([Link](https://www.google.com/maps/d/edit?mid=1gncQSY1DwNDEuz3T8xGdS-zmDTmZJsbg&usp=sharing))
 
-![経路マップ](/exp/images/load.png)
+![経路マップ](images/load.png)
 

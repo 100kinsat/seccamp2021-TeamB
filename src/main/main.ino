@@ -22,14 +22,15 @@ Motor motor = Motor();
 const int ROTATE_PWM_VALUE = 100;       // 回転時のPWM
 const int ERROR_ROTATE_PWM_VALUE = 255; // ハマった時のPWMの値
 const int ERROR_ROTATE_TIME = 2000; // ハマった時の回転する秒数
-const int ERROR_ROTATE_DELAY_TIME = 3000; // ハマった時に回転した後，止まる時間
+const int ERROR_ROTATE_DELAY_TIME = 1000; // ハマった時に回転した後，止まる時間
 const int STRAIGHT_PWM_VALUE = 255;
-const int DELAY_TIME = 15000;       // 直進後の停止時間
+const int DELAY_TIME = 1000;       // 直進後の停止時間
 const int ROTAION_TIME = 1000;     // 回転時間
 const int STRAIGHT_TIME = 10000;   // 直進時の時間
-const int MAX_ROTATE_LOOP_COUNT = 30; // ハマった時の上限
+const int MAX_ROTATE_LOOP_COUNT = 100; // ハマった時の上限
+int ROTATION_DIRECTION = 0; // 0: left, 1: right
 // Yaw
-const double ERROR_RANGE = 20.0;
+const double ERROR_RANGE = 10.0;
 //////
 
 // GPS
@@ -39,8 +40,10 @@ HardwareSerial ss(2);
 static const bool ENABLE_GPS = true;
 
 // 目的地の緯度・経度を設定(テスト時に書き換え)
-const double goal_lat = 51.508131;
-const double goal_lng = -0.128002;
+const double goal_lat = 35.149583;
+const double goal_lng = 136.948952;
+// start_lat: 35.149482, 
+// start_lng: 136.949795
 
 // SD card
 CanSatSd sd = CanSatSd();
@@ -213,6 +216,7 @@ void decide_first_course_loop() {
   // clear
   int rotate_loop_count = 0;
   log_message = "";
+  ROTATION_DIRECTION ^= 1; // 0 -> 1, 1 -> 0
   
   while(1) {
     if(mpu.update()) {
@@ -222,7 +226,20 @@ void decide_first_course_loop() {
         double goal_yaw_degree = TinyGPSPlus::courseTo(lat_lng[0], lat_lng[1], goal_lat, goal_lng); // (0 - 359)
          
         // 現在の角度の確認
-        double current_yaw_degree = mpu.getYaw() + 180; // (-180 - 180) -> (0 - 359) に合わせる
+        double current_yaw_degree = mpu.getYaw();
+        
+        // yawを角度に合わせる
+        if(0.0 <= current_yaw_degree && current_yaw_degree <= 180.0){
+          current_yaw_degree = current_yaw_degree;
+        } 
+        else if( -180.0 <= current_yaw_degree && current_yaw_degree < 0.0){
+          // -180 ~ 180の時の値を北を0とする角度系に修正する。
+          current_yaw_degree = 360.0 + current_yaw_degree;
+        } 
+        else {
+          log_message += String("ERROR! Unable to get current_yaw_degree!! \n");
+          continue;
+        }
         double degree_gap = goal_yaw_degree - current_yaw_degree;
         
         log_message += String("current_yaw_degree, goal_yaw_degree, gap_degree: \n");
@@ -236,6 +253,7 @@ void decide_first_course_loop() {
         // GAPを埋める方向に回転する ex. degree_gapが+なら-方向に回転する。
         // Serial.println("read GPS value OK");
         // 規定以上(MAX_ROTATE_LOOP_COUNT)の回転があった時
+        
         if(MAX_ROTATE_LOOP_COUNT < rotate_loop_count) {
           motor.forward_to_goal_left(ERROR_ROTATE_PWM_VALUE);
           delay(ERROR_ROTATE_TIME); // 4，5秒ぐらいで半回転（床:理想状態）. yawの値で半回転したと判定できれば理想
@@ -248,7 +266,8 @@ void decide_first_course_loop() {
           continue;
         }
         
-        // +方向にgapがある時
+        // -方向にgapがある時
+        /*
         if((-180 <= degree_gap && degree_gap < -1 * ERROR_RANGE) || 180 < degree_gap ) {
           // left側に動かす
           rotate_loop_count++;
@@ -259,7 +278,7 @@ void decide_first_course_loop() {
           prev_ms = millis();
           continue;
         }
-        // -方向にgapがある時
+        // +方向にgapがある時
         else if( degree_gap >= ERROR_RANGE || degree_gap < -180) {
           // right側に動かす
           rotate_loop_count++;
@@ -274,10 +293,27 @@ void decide_first_course_loop() {
           // Serial.print("fixed degree\n");
           // write_file(log_message);
         }
+        */
+        
+        if(180 - ERROR_RANGE <= abs(degree_gap) && abs(degree_gap) <= 180 + ERROR_RANGE) {
+          speaker.tone(50); // スピーカーON
+          speaker.noTone();
+          break;
+        } else {
+          if(ROTATION_DIRECTION) {
+            motor.forward_to_goal_right(ROTATE_PWM_VALUE);
+            log_message += String("right rotation\n");
+          } else {
+            motor.forward_to_goal_left(ROTATE_PWM_VALUE);
+            log_message += String("left rotation\n");
+          }
+          rotate_loop_count++;
+          prev_ms = millis();
+        }
 
-        speaker.tone(50); // スピーカーON
-        speaker.noTone();
-        break;
+        // speaker.tone(50); // スピーカーON
+        // speaker.noTone();
+        // break;
       }
     }
   }

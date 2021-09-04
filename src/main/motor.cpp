@@ -90,7 +90,7 @@ void Motor::forward_to_goal_right(int pwm) {
 
   // 右モータ（CW，時計回り）
   digitalWrite(motorB[1], LOW);
-  digitalWrite(motorB[0], HIGH);
+  digitalWrite(motorB[0], LOW);
   ledcWrite(CHANNEL_B, HIGH);
 }
 
@@ -98,7 +98,7 @@ void Motor::forward_to_goal_right(int pwm) {
 void Motor::forward_to_goal_left(int pwm) {
   // 左モータ（CCW，反時計回り）
   digitalWrite(motorA[1], LOW);
-  digitalWrite(motorA[0], HIGH);
+  digitalWrite(motorA[0], LOW);
   ledcWrite(CHANNEL_A, HIGH);
 
   // 右モータ（CW，時計回り）

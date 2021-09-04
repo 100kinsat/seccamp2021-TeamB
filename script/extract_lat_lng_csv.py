@@ -13,6 +13,7 @@ with open(src_file) as f:
 f.close()
 
 # 緯度・軽度のとこだけ読み込む
+lat_lng.append(["latitude", "longitude"])
 for index in range(len(csv_list)):
   if(csv_list[index][1] == "GPS:Sats"): # 条件：適宜変える
     lat_lng.append(csv_list[index + 1][1:3]) # [1:3]: lat, lng

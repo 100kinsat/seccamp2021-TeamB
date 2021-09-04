@@ -1,6 +1,9 @@
 # ソースコード
-
 ## main.ino
+
+使用ライブラリ
+- [MPU9250](https://github.com/hideakitai/MPU9250)
+- [TinyGPSPlus](https://github.com/mikalhart/TinyGPSPlus)
 
 ### 角度調整(decide_first_course_loop())
 
